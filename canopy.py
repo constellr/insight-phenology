@@ -111,5 +111,3 @@ def plot_map(img, nearest_date, merged_image, cropland):
         )
     )
     plt.show()
-
-
