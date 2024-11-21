@@ -1,11 +1,12 @@
 import pandas as pd
 import geopandas as gpd
 
+from preprocessing import *
 from phenology import *
 from canopy import *
 from plotting import *
 from gdd import *
- 
+
 pd.set_option('mode.chained_assignment', None)
 
 if __name__ == '__main__':
