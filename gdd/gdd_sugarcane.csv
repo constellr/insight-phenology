@@ -1,0 +1,49 @@
+country;crop;variety;Tbase;Tmax;GDD;stage
+India;sugarcane;Co 0238;20;38;250-400;Germination
+India;sugarcane;Co 0238;20;38;1000-1500;Tillering
+India;sugarcane;Co 0238;20;38;1800-2500;Grand Growth Phase
+India;sugarcane;Co 0238;20;38;2500-3000;Maturity
+India;sugarcane;Co 86033;20;38;300-450;Germination
+India;sugarcane;Co 86033;20;38;1200-1600;Tillering
+India;sugarcane;Co 86033;20;38;1800-2600;Grand Growth Phase
+India;sugarcane;Co 86033;20;38;2600-3200;Maturity
+India;sugarcane;Co 8014;18;37;250-400;Germination
+India;sugarcane;Co 8014;18;37;1000-1400;Tillering
+India;sugarcane;Co 8014;18;37;2000-2800;Grand Growth Phase
+India;sugarcane;Co 8014;18;37;2800-3200;Maturity
+India;sugarcane;Co 89003;21;40;300-500;Germination
+India;sugarcane;Co 89003;21;40;1500-2000;Tillering
+India;sugarcane;Co 89003;21;40;2200-3000;Grand Growth Phase
+India;sugarcane;Co 89003;21;40;3000-3500;Maturity
+Brazil;sugarcane;SP80-3280;18;38;300-500;Germination
+Brazil;sugarcane;SP80-3280;18;38;800-1500;Tillering
+Brazil;sugarcane;SP80-3280;18;38;1800-2500;Grand Growth Phase
+Brazil;sugarcane;SP80-3280;18;38;2500-3000;Maturity
+Brazil;sugarcane;RB867515;19;38;350-550;Germination
+Brazil;sugarcane;RB867515;19;38;1000-1600;Tillering
+Brazil;sugarcane;RB867515;19;38;2000-2700;Grand Growth Phase
+Brazil;sugarcane;RB867515;19;38;2800-3200;Maturity
+Brazil;sugarcane;CTC 9001;20;39;250-450;Germination
+Brazil;sugarcane;CTC 9001;20;39;1200-1700;Tillering
+Brazil;sugarcane;CTC 9001;20;39;1900-2600;Grand Growth Phase
+Brazil;sugarcane;CTC 9001;20;39;2700-3200;Maturity
+Brazil;sugarcane;IACSP95-5000;19;37;300-450;Germination
+Brazil;sugarcane;IACSP95-5000;19;37;1300-1800;Tillering
+Brazil;sugarcane;IACSP95-5000;19;37;2200-2800;Grand Growth Phase
+Brazil;sugarcane;IACSP95-5000;19;37;2900-3500;Maturity
+USA;sugarcane;L 99-233;18;36;200-400;Germination
+USA;sugarcane;L 99-233;18;36;800-1400;Tillering
+USA;sugarcane;L 99-233;18;36;1500-2200;Grand Growth Phase
+USA;sugarcane;L 99-233;18;36;2200-2700;Maturity
+USA;sugarcane;HoCP 96-540;19;37;250-450;Germination
+USA;sugarcane;HoCP 96-540;19;37;1000-1500;Tillering
+USA;sugarcane;HoCP 96-540;19;37;1800-2500;Grand Growth Phase
+USA;sugarcane;HoCP 96-540;19;37;2500-3000;Maturity
+USA;sugarcane;CP 88-1762;20;38;300-500;Germination
+USA;sugarcane;CP 88-1762;20;38;1200-1600;Tillering
+USA;sugarcane;CP 88-1762;20;38;2000-2700;Grand Growth Phase
+USA;sugarcane;CP 88-1762;20;38;2800-3200;Maturity
+USA;sugarcane;CP 72-2086;18;37;250-400;Germination
+USA;sugarcane;CP 72-2086;18;37;1000-1400;Tillering
+USA;sugarcane;CP 72-2086;18;37;1800-2400;Grand Growth Phase
+USA;sugarcane;CP 72-2086;18;37;2400-2900;Maturity
