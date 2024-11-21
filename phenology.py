@@ -19,6 +19,11 @@ def get_crs(aoi,utm):
     return aoi
 
 def aggregation(dir,aoi,gid):
+    '''
+    Apply zonal statistics / rasterstats based on a single AOI/parcel geometry and
+    local raster files (NDVI, LST, etc.)
+    '''
+
     rows = []
     directory = os.fsencode(dir)
 
@@ -40,88 +45,134 @@ def aggregation(dir,aoi,gid):
             statistics = zonal_stats(
                 geom,
                 raster,
-                stats="mean min max",
+                stats="mean",
                 all_touched=True,
                 nodata=0,
                 categorical=False,
             )
 
             mean = statistics[0]['mean']
-            min = statistics[0]['min']
-            max = statistics[0]['max']
             id = int(feature['id'])
 
-            rows.append([id, date, mean, min, max])
+            rows.append([id, date, mean])
 
     return rows
 
 def preprocess_df(rows):
+    '''
+    Gets stats for a parcel
+    '''
+
     df = pd.DataFrame(
         rows,
         columns=[
             "id",
             "date",
             "mean",
-            'min',
-            'max'
         ]
     )
 
     df['date'] = pd.to_datetime(df['date'])
-    df['doy'] = df['date'].dt.dayofyear
+    #df['doy'] = df['date'].dt.dayofyear
     df = df.sort_values(by='date')
 
     return df
 
 def smoothing(df):
-    df.set_index('date', inplace=True)
-    df = df[~df.index.duplicated()]
-    gf = df.resample('1D').asfreq()
+    '''
+    Main function to
+    - resample NDVI time series to daily/weekly/decadal/monthly intervals
+    - interpolate and gap-fill resampled time series
+    - apply smoothing filter like filter or savitzky-golay
+
+    Prefered filter is gaussian-1D to reduce noise and to enable extraction of derivatives.
+    Savitzky-Golay preserves time series shape, but yields too much noise still.
+    '''
+
+    sf = df.copy(deep=True)
+    sf.set_index('date', inplace=True)
+    sf = sf[~sf.index.duplicated()]
+    gf = sf.resample('1D').asfreq()
     gf['interpol'] = gf['mean'].interpolate(method='linear')
-    gf['gaussian'] = gaussian_filter1d(gf['interpol'].values, 15)
+
+    filter = "gaussian"
+
+    if filter == "gaussian":
+        gf['filter'] = gaussian_filter1d(gf['interpol'].values, 15)
+    if filter == "savgol":
+        gf['filter'] = savgol_filter(gf['interpol'].values, 9, 2)
+
     gf = gf.reset_index()
 
     return gf
 
-def get_markers(gf,peak_dates):
+def get_peaks(gf):
+    '''
+    1. get peaks from the timer series, there can be multiple peaks,
+    especially for sugarcane, grass, alfalfa.
 
-    if len(peak_dates) == 0:
-        ndvi_dates = gf['date'].values
-        ndvi_values = gf['gaussian'].values
-        pos_index = np.argmax(ndvi_values)
-        date_pos = ndvi_dates[pos_index]
-        peak_dates.loc[0] = pd.to_datetime(date_pos)
+    2. then get absolute POS
+    '''
 
-    date_sos = None
-    date_eos = None
+    peaks, _ = find_peaks(gf['filter'].values, height=0)
+    peak_dates = gf['date'].iloc[peaks]
+    peak_dates = pd.to_datetime(peak_dates)
+    peak_values = gf['filter'].iloc[peaks]
 
-    for p in range(0,len(peak_dates)):
-        date_pos = peak_dates.values[p]
+    max_index = gf['filter'].idxmax()
+    pos_date = gf.loc[max_index, 'date']
+    pos_value = gf.loc[max_index, 'filter']
 
-        sf = gf.loc[(gf['date'] <= date_pos)]
+    return peak_dates, peak_values, pos_date, pos_value
+
+def get_markers(gf, pos_dates):
+    '''
+    get the Start of Season and End of Season
+    based on the gradient changes of the time series.
+    Default threshold is 0.001
+    '''
+
+    sos_date = None
+    sos_value = None
+    eos_date = None
+    eos_value = None
+
+    ndvi_threshold = 0.001
+
+    for p in range(0,len(pos_dates)):
+        pos_date = pos_dates.values[p]
+
+        sf = gf.loc[(gf['date'] <= pos_date)]
         if len(sf) > 2:
             ndvi_dates = sf['date'].values
-            ndvi_values = sf['gaussian'].values
+            ndvi_values = sf['filter'].values
             gradient = np.gradient(ndvi_values)
-            sos_index = np.argmax(gradient > 0.001)
-            date_sos = ndvi_dates[sos_index]
+            sos_index = np.argmax(gradient > ndvi_threshold)
+            sos_date = ndvi_dates[sos_index]
+            sos_value = ndvi_values[sos_index]
 
-        sf = gf.loc[(gf['date'] >= date_pos)]
+        sf = gf.loc[(gf['date'] >= pos_date)]
         if len(sf) > 2:
 
             ndvi_dates = sf['date'].values
-            ndvi_values = sf['gaussian'].values
+            ndvi_values = sf['filter'].values
             gradient = np.gradient(ndvi_values)
-            eos_index = len(gradient) - np.argmax(gradient[::-1] < -0.001) - 1
-            date_eos = ndvi_dates[eos_index]
+            eos_index = len(gradient) - np.argmax(gradient[::-1] < -ndvi_threshold) - 1
+            eos_date = ndvi_dates[eos_index]
+            eos_value = ndvi_values[eos_index]
 
-        if date_sos and date_eos:
-            return date_sos, date_pos, date_eos
+        if sos_date and eos_date:
+            return sos_date, sos_value, eos_date, eos_value
 
 def get_plateau(gf):
+    '''
+    get the low and high NDVI plateaus which indicate stagnation:
+    - high plateau = NDVI saturation and max canopy/biomass development
+    - low plateau = low or no growth (after harvest, before sowing)
+    '''
     threshold = 0.002
     ndvi_dates = gf['date'].values
-    ndvi_values = gf['gaussian'].values
+    ndvi_values = gf['filter'].values
 
     differences = np.abs(np.diff(ndvi_values))
     plateau_mask = differences < threshold
@@ -143,69 +194,35 @@ def get_plateau(gf):
 
     return plateaus
 
-def get_peaks(gf):
-    peaks, _ = find_peaks(gf['gaussian'].values, height=0)
-    peak_dates = gf['date'].iloc[peaks]
-    peak_dates = pd.to_datetime(peak_dates)
-    max_ndvi = np.max(gf['gaussian'].values)
-
-    return peaks, peak_dates, max_ndvi
-
 def get_derivatives(gf,sos,pos,eos):
+    '''
+    get inflection and acceleration points of the time series
+    based on the 2nd and 3rd derivation
+    '''
+
     sf = gf.loc[(gf['date'] > sos) & (gf['date'] < eos)]
     if len(sf) > 2:
-        sf['dy'] = sf['gaussian'].diff()
+        sf['dy'] = sf['filter'].diff()
         sf['ddy'] = sf['dy'].diff()
         sf['dddy'] = sf['ddy'].diff()
 
         sf['inflection'] = np.sign(sf['ddy']).diff().fillna(0).abs() > 0
-        inflection_points = sf[sf['inflection']][['date', 'gaussian']]
+        inflection_points = sf[sf['inflection']][['date', 'filter']]
 
-        xf = sf.loc[(sf['date'] < pos)]
-        xf['acceleration'] = np.sign(xf['dddy']).diff().fillna(0).abs() > 0
-        acceleration_1 = xf[xf['acceleration']][['date', 'gaussian']]
+        sf['acceleration'] = np.sign(sf['dddy']).diff().fillna(0).abs() > 0
+        acceleration_points = sf[sf['acceleration']][['date', 'filter']]
 
-        acceleration_3 = xf[xf['acceleration'] == True]
-        acceleration_3 = acceleration_3.head(1)
+        return inflection_points, acceleration_points
 
-        yf = sf.loc[(sf['date'] > pos)]
-        yf['acceleration'] = np.sign(yf['dddy']).diff().fillna(0).abs() > 0
-        acceleration_2 = yf[yf['acceleration']][['date', 'gaussian']]
+def get_growth_rate(sos_value, pos_value):
+    '''
+    get the gradient/slope between SOS and POS
+    as a proxy of the plant growth rate
+    '''
 
-        acceleration_4 = yf[yf['acceleration'] == True]
-        acceleration_4 = acceleration_4.tail(1)
-
-        return inflection_points, acceleration_1, acceleration_2, acceleration_3, acceleration_4
-
-def get_growth_rate(x,acceleration_1):
-    try:
-        tf = pd.DataFrame()
-        tf['date'] = [x['date'].iloc[0], acceleration_1['date'].iloc[1]]
-        tf['ndvi'] = [x['gaussian'].values[0], acceleration_1['gaussian'].iloc[1]]
-        p1 = tf['ndvi'].values[0]
-        p2 = tf['ndvi'].values[1]
-        gradients = np.gradient([p1,p2])[0]
-
-    except:
-        gradients = 0
+    gradients = np.gradient([sos_value,pos_value])[0]
 
     return gradients
 
-def get_gdd(lst_ts,sos,eos,Tbase,Tmax,Tmin):
-    gdd = lst_ts.loc[(lst_ts['date'] >= sos) & (lst_ts['date'] <= eos)]
-    if len(gdd) > 2:
-        gdd['mean'] = gdd['mean'] - 270
-        gdd['max'] = gdd['max'] - 270
-        gdd['min'] = gdd['min'] - 270
-
-        gdd['Tmax'] = gdd['max'].clip(upper=Tmax)
-        #gdd['mean'] = (gdd['Tmax'] + Tmin) / 2
-        gdd['mean'] = (gdd['Tmax'] + gdd['min']) / 2
-        gdd['mean'] = (gdd['mean'] - Tbase).clip(lower=0)
-
-        gdd_ts = smoothing(gdd)
-        gdd_ts['GDD'] = gdd_ts['interpol'].cumsum()
-
-        return gdd_ts
 
 
