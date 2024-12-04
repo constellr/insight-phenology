@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import numpy as np
 from sklearn.cluster import MiniBatchKMeans
-from matplotlib.colors import Normalize
 
 def get_file_with_nearest_date(dir_clip, target_date):
     date_file_map = {}
@@ -82,32 +81,3 @@ def postprocess(sorted_labels_map,img):
 
     return merged_image, cropland
 
-def plot_map(img, nearest_date, merged_image, cropland):
-
-    cmap = plt.cm.gray
-    norm = Normalize(vmin=np.min(img), vmax=np.max(img))
-
-    fig, ax = plt.subplots(1, 2, figsize=(12, 6))
-    cax = ax[0].imshow(img, cmap=cmap, norm=norm)
-
-    cbar = plt.colorbar(cax, ax=ax, orientation='horizontal', fraction=0.05, pad=0.1)
-    cbar.set_label('NDVI', rotation=0, labelpad=10, color='black')
-    cbar.ax.tick_params(labelcolor='black')
-    cbar.set_label('NDVI')
-
-    ax[0].set_title(f'NDVI Image at {nearest_date}')
-    ax[0].axis('off')
-
-    ax[1].imshow(merged_image, cmap='RdYlGn')
-    ax[1].set_title(f'Canopy map at {nearest_date}')
-    ax[1].axis('off')
-
-    textstr = f'Net Area in %: {np.round(cropland, 2)}'
-    plt.gca().text(
-        0.5, 0.1, textstr, transform=plt.gca().transAxes,
-        fontsize=10, verticalalignment='bottom',
-        bbox=dict(
-            boxstyle='round', facecolor='white'
-        )
-    )
-    plt.show()
