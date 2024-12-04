@@ -1,8 +1,14 @@
+# roadmap
+
+![image](https://github.com/user-attachments/assets/440085ae-3df4-43fa-84da-a8f7f5767679)
+
 # insight-phenology
 
-This repo targets the parcel-based assessment of vegetation index AND LST time series.
-It uses local dirs and local GeoTIFFs (NDVI and LST).
-For real integration it would be better to include connectr-functionality.
+This repo targets the parcel-based assessment of vegetation index AND LST time series to:
+- get NDVI-based crop growth stages (phenology metrics)
+- get GDD-based crop growth stages (GDD corridors based on temperature optima)
+
+![image](https://github.com/user-attachments/assets/d21332b8-6c1d-4df0-adfd-822e3984c9f3)
 
 ## preprocessing
 - zonal statistics (per parcel) and spatial aggregation
