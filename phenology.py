@@ -49,7 +49,13 @@ def get_peaks(gf):
     pos_date = gf.loc[max_index, 'date']
     pos_value = gf.loc[max_index, 'filter']
 
-    return peak_dates, peak_values, pos_date, pos_value
+    hf = gf.copy()
+    hf = hf[hf['date'] < pos_date]
+    min_index = hf['filter'].idxmin()
+    vos_date = hf.loc[min_index, 'date']
+    vos_value = hf.loc[min_index, 'filter']
+
+    return peaks, peak_dates, peak_values, pos_date, pos_value, vos_date, vos_value
 
 def get_markers(gf, pos_dates):
     '''
@@ -149,6 +155,4 @@ def get_growth_rate(sos_value, pos_value):
     gradients = np.gradient([sos_value,pos_value])[0]
 
     return gradients
-
-
 
