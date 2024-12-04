@@ -1,7 +1,12 @@
 import os
+import pandas as pd
+import numpy as np
 import geopandas as gpd
 from rasterstats import zonal_stats
+from scipy.signal import resample
 from shapely.geometry import shape
+import rasterio as rio
+from rasterio.warp import reproject, Resampling
 
 def get_crs(aoi,utm):
     if aoi.crs != utm.crs:
@@ -29,13 +34,29 @@ def aggregation(dir,aoi,gid):
     for file in os.listdir(directory):
         filename = os.fsdecode(file)
 
-        if (filename.endswith(".tif") == True or filename.endswith(".tiff") == True) and "CLOUDS" not in filename:
-            raster = f"{dir}\\{filename}"
+        if ((filename.endswith(".tif") == True or filename.endswith(".tiff") == True) and "CLOUDS" not in filename):
 
-            try:
-                date = filename.split("_")[2]
-            except:
-                date = filename[:8]
+            if "LST30" in filename:
+                rasterfile = f"{dir}\\{filename}"
+                cloudmask = rasterfile.replace("LST30","CLOUDS")
+
+                with rio.open(rasterfile) as lst_raster:
+                    raster = lst_raster.read(1)
+                    raster_transform = lst_raster.transform
+
+                with rio.open(cloudmask) as cloud_raster:
+                    cloudmask_data = cloud_raster.read(1)
+
+                raster[cloudmask_data == 1] = np.nan
+
+            if "NDVI" in filename:
+                rasterfile = f"{dir}\\{filename}"
+
+                with rio.open(rasterfile) as lst_raster:
+                    raster = lst_raster.read(1)
+                    raster_transform = lst_raster.transform
+
+            date = filename[:8]
 
             statistics = zonal_stats(
                 geom,
@@ -44,11 +65,11 @@ def aggregation(dir,aoi,gid):
                 all_touched=True,
                 nodata=0,
                 categorical=False,
+                affine=raster_transform
             )
 
             mean = statistics[0]['mean']
             id = int(feature['id'])
-
             rows.append([id, date, mean])
 
     return rows
