@@ -3,6 +3,7 @@ import geopandas as gpd
 
 from preprocessing import *
 from phenology import *
+from feature_engineering import *
 from canopy import *
 from plotting import *
 from gdd import *
@@ -13,25 +14,35 @@ if __name__ == '__main__':
 
     ##############################################################################
     ##############################################################################
+    ### =============================== Params =============================== ###
 
     # rasterfiles
-    dir_ndvi = r"C:\Users\DimoDimov\Documents\DATA\LST_Syngenta\Landsat\NDVI"
-    dir_clip = r"C:\Users\DimoDimov\Documents\DATA\LST_Syngenta\Landsat\NDVI\CLIP"
-    dir_lsti = r"C:\Users\DimoDimov\Documents\DATA\LST_Syngenta\LST"
+    dir_ndvi = r"C:\Users\DimoDimov\Documents\DATA\LST_Swan\Landsat\NDVI"
+    dir_clip = r"C:\Users\DimoDimov\Documents\DATA\LST_Swan\Landsat\NDVI-CLIP"
+    dir_lsti = r"C:\Users\DimoDimov\Documents\DATA\LST_Swan\LST"
 
     # input data
-    aoi = r"C:\Users\DimoDimov\Documents\DATA\LST_Syngenta\syngenta_parcels.geojson"
+    aoi = r"C:\Users\DimoDimov\Documents\DATA\LST_Swan\swan_2024-10-24_poc_edit_WGS.geojson"
+    #aoi = r"C:\Users\DimoDimov\Documents\DATA\LST_Syngenta\syngenta_parcels.geojson"
+
     utm = r"C:\Users\DimoDimov\Documents\DATA\utm_zones.geojson"
 
     # output
-    output_csv = r"phenology_features.csv"
-    output_csv_timeseries = r"phenology_timeseries.csv"
+    output_1 = r"summary_stats.csv"
+    output_2 = r"phenology_stats.csv"
+    output_3 = r"ncf_stats.csv"
 
     # params
     country = "India"
     crop = "sugarcane"
-    variety = "Co 86033"
+    variety = "Co 89003"
 
+    startdate = '2021-09-01'
+    enddate = '2022-07-01'
+
+    slicing = True
+    plotting = True
+    ### =============================== Params =============================== ###
     ##############################################################################
     ##############################################################################
 
@@ -40,40 +51,57 @@ if __name__ == '__main__':
 
     xf = pd.DataFrame()
     yf = pd.DataFrame()
+    zf = pd.DataFrame()
 
     aoi = get_crs(aoi,utm)
 
-    gids = aoi.id.unique()
-    for gid in gids:
+    for i, row in aoi.iterrows():
 
-        ### NDVI ###
+        gid = row['id']
+
+        try:
+            startdate = row['Sowing_3']
+            enddate = row['Harvesting_4']
+            startdate = datetime.strptime(startdate, '%d-%b-%Y')
+            enddate = datetime.strptime(enddate, '%d-%b-%Y')
+        except:
+            startdate = '2023-04-15'
+            enddate = '2023-10-01'
+            startdate = datetime.strptime(startdate, '%Y-%m-%d')
+            enddate = datetime.strptime(enddate, '%Y-%m-%d')
+
+        startdate = startdate.strftime('%Y-%m-%dT%H:%M:%S')
+        enddate = enddate.strftime('%Y-%m-%dT%H:%M:%S')
+
+        ### ================================ NDVI ================================ ###
+
         veg = aggregation(dir_ndvi, aoi, gid)
         ndvi_timeseries = preprocess_df(veg)
         ndvi_timeseries = smoothing(ndvi_timeseries)
 
+        if slicing == True:
+            ndvi_timeseries = ndvi_timeseries[(ndvi_timeseries['date'] >= startdate) & (ndvi_timeseries['date'] <= enddate)]
+
         if len(ndvi_timeseries) > 0:
 
-            peak_dates, peak_values, pos_date, pos_value = get_peaks(ndvi_timeseries)
-
-            try:
-                sos_date, sos_value, eos_date, eos_value = get_markers(ndvi_timeseries, pos_date)
-            except:
-                sos_date = ndvi_timeseries['date'].head(1).values[0]
-                sos_value = ndvi_timeseries['filter'].head(1).values[0]
-                eos_date = ndvi_timeseries['date'].tail(1).values[0]
-                eos_value = ndvi_timeseries['filter'].tail(1).values[0]
+            peaks, peak_dates, peak_values, pos_date, pos_value, vos_date, vos_value = get_peaks(ndvi_timeseries)
+            sos_date, sos_value, eos_date, eos_value = get_markers(ndvi_timeseries, peak_dates)
 
             inflection_points, acceleration_points = get_derivatives(ndvi_timeseries, sos_date, pos_date, eos_date)
             growth_rate = get_growth_rate(sos_value, pos_value)
             plateaus = get_plateau(ndvi_timeseries)
 
-            ### LST ###
+            ### ================================ LST ================================ ###
+
             lst_timeseries = aggregation(dir_lsti, aoi, gid)
             lst_timeseries = preprocess_df(lst_timeseries)
 
+            if slicing == True:
+                lst_timeseries = lst_timeseries[(lst_timeseries['date'] >= vos_date) & (lst_timeseries['date'] <= enddate)]
+
             gdd_timeseries = get_gdd_corridors(
                 lst_timeseries,
-                sos_date,
+                vos_date,
                 eos_date,
                 country, crop, variety
             )
@@ -88,7 +116,7 @@ if __name__ == '__main__':
                 country, crop, variety
             )
 
-            ard_df = vegetation_stats(
+            ndvi_features = vegetation_stats(
                 ndvi_timeseries,
                 sos_date,
                 pos_date,
@@ -97,43 +125,73 @@ if __name__ == '__main__':
                 acceleration_points
             )
 
-            gdd_features['id'] = gid
-            gdd_timeseries['id'] = gid
-            ard_df['id'] = gid
+            summary_features = summary_stats(
+                gid,
+                ndvi_timeseries,
+                lst_timeseries,
+                sos_date,
+                eos_date,
+            )
 
-            ard_df["growth_rate"] = growth_rate
-            ard_df["SOS_date"] = sos_date
-            ard_df["POS_date"] = pos_date
-            ard_df["EOS_date"] = eos_date
-            ard_df["SOS_value"] = sos_value
-            ard_df["POS_value"] = pos_value
-            ard_df["EOS_value"] = eos_value
+            ard_timeseries, ard_features = feature_engineering(
+                gid,
+                gdd_timeseries,
+                gdd_features,
+                ndvi_features,
+                ndvi_timeseries,
+                growth_rate,
+                sos_date,
+                sos_value,
+                pos_date,
+                pos_value,
+                eos_date,
+                eos_value,
+                inflection_points,
+                acceleration_points,
+            )
 
-            ard_df['first_inflection_date'] = inflection_points['date'].head(1).values[0]
-            ard_df['first_inflection_value'] = inflection_points['filter'].head(1).values[0]
-            ard_df['last_inflection_date'] = inflection_points['date'].tail(1).values[0]
-            ard_df['last_inflection_value'] = inflection_points['filter'].tail(1).values[0]
+            startdate = datetime.strptime(startdate.split('.')[0], '%Y-%m-%dT%H:%M:%S')
+            enddate = datetime.strptime(enddate.split('.')[0], '%Y-%m-%dT%H:%M:%S')
 
-            ard_df['first_acceleration_date'] = acceleration_points['date'].head(1).values[0]
-            ard_df['first_acceleration_value'] = acceleration_points['filter'].head(1).values[0]
-            ard_df['last_acceleration_date'] = acceleration_points['date'].tail(1).values[0]
-            ard_df['last_acceleration_value'] = acceleration_points['filter'].tail(1).values[0]
+            ### ================================ Plotting & Visualization ================================ ###
 
-            #################################
-            #################################
+            if plotting == True:
 
-            ndvi_timeseries['mean_NDVI'] = ndvi_timeseries['mean']
-            ndvi_timeseries['interpol_NDVI'] = ndvi_timeseries['interpol']
-            ndvi_timeseries['filter_NDVI'] = ndvi_timeseries['filter']
-            ndvi_timeseries = ndvi_timeseries.drop(columns=['mean', 'interpol', 'filter'])
+                plot_all(
+                    ard_timeseries,
+                    ndvi_timeseries,
+                    gdd_timeseries,
+                    plateaus,
+                    inflection_points,
+                    acceleration_points,
+                    peaks, peak_dates, peak_values,
+                    sos_date, pos_date, eos_date,
+                    sos_value, eos_value,
+                    growth_rate, pos_value,
+                    startdate, enddate
+                )
 
-            merge_timeseries = pd.merge(ndvi_timeseries, gdd_timeseries, on=['id','date'])
-            merge_features = pd.merge(ard_df, gdd_features, on='id')
+            ### ================================ Canopy ================================ ###
 
-            #plot_gdd(merge_timeseries)
+            """
+            img, nearest_date = get_parcel_image(dir_clip, pos_date, gid)
+            sorted_labels_map = clustering(img)
+            merged_image, cropland = postprocess(sorted_labels_map, img)
 
-            xf = pd.concat([merge_timeseries,xf])
-            yf = pd.concat([merge_features,yf])
+            ncf_features = pd.DataFrame()
+            ncf_features['id'] = [gid]
+            ncf_features['cropland'] = [cropland]
 
-    xf.to_csv(output_csv_timeseries, sep=';', index=False)
-    yf.to_csv(output_csv, sep=';', index=False)
+            plot_canopy_map(img, nearest_date, merged_image, cropland)
+
+            zf = pd.concat([ncf_features,zf])
+            """
+
+            ### ================================ Data Prep ================================ ###
+
+            yf = pd.concat([summary_features, yf])
+            xf = pd.concat([ard_features, xf])
+
+    yf.to_csv(output_1, sep=';', index=False)
+    xf.to_csv(output_2, sep=';', index=False)
+    #zf.to_csv(output_3, sep=';', index=False)
