@@ -88,7 +88,7 @@ def summary_stats(
 
     return ard
 
-def vegetation_stats(
+def get_ndvi_stages(
         df,
         sos_date,
         pos_date,
@@ -147,3 +147,60 @@ def vegetation_stats(
                     .merge(ard_4, on='id', how='outer')
 
     return ard_ndvi
+
+def get_timeseries_stats(
+        gid,
+        lst_timeseries,
+        ndvi_timeseries,
+    ):
+
+    ndvi_timeseries['id'] = gid
+    lst_timeseries['id'] = gid
+
+    ndvi = pd.DataFrame()
+    lst = pd.DataFrame()
+
+    ndvi['id'] = ndvi_timeseries['id']
+    ndvi['NDVI_date'] = ndvi_timeseries['date']
+    ndvi['NDVI_mean'] = ndvi_timeseries['mean_NDVI']
+    ndvi['NDVI_min'] = ndvi_timeseries['min']
+    ndvi['NDVI_max'] = ndvi_timeseries['max']
+
+    lst['id'] = lst_timeseries['id']
+    lst['LST_date'] = lst_timeseries['date']
+    lst['LST_mean'] = lst_timeseries['mean']
+    lst['LST_min'] = lst_timeseries['min']
+    lst['LST_max'] = lst_timeseries['max']
+
+    #ard_timeseries = pd.merge(ndvi, lst, on=['id', 'date'])
+    ard_timeseries = pd.merge(ndvi, lst, on=['id'])
+
+    return ard_timeseries
+
+def get_sequential_features(df, resampling):
+
+    resampled_df = df
+
+    if resampling == "weekly":
+        df.set_index('LST_date', inplace=True)
+        resampled_df = df.groupby('id').resample('W').mean()
+        resampled_df = resampled_df.drop(columns='id')
+        resampled_df = resampled_df.reset_index()
+        resampled_df['month_year'] = resampled_df['LST_date'].dt.strftime('%B-%Y')
+
+    if resampling == "monthly":
+        df.set_index('LST_date', inplace=True)
+        resampled_df = df.groupby('id').resample('MS').mean()
+        resampled_df = resampled_df.drop(columns='id')
+        resampled_df = resampled_df.reset_index()
+        resampled_df['month_year'] = resampled_df['LST_date'].dt.strftime('%B-%Y')
+
+    pivot_lst = resampled_df.pivot_table(index='id', columns='LST_date', values='LST_max').reset_index()
+    pivot_ndvi = resampled_df.pivot_table(index='id', columns='NDVI_date', values='NDVI_max').reset_index()
+
+    pivot_lst.columns = ['id'] + [f'LST_{col}' for col in pivot_lst.columns if col != 'id']
+    pivot_ndvi.columns = ['id'] + [f'NDVI_{col}' for col in pivot_ndvi.columns if col != 'id']
+
+    ard = pd.merge(pivot_lst, pivot_ndvi, on=['id'])
+
+    return ard
