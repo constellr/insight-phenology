@@ -37,8 +37,8 @@ def load_config():
         "country": "USA",  # Country for analysis ("India", "USA", "Brazil", "Germany")
         "crop": "corn",  # Target crop ("sugarcane", "wheat", "corn", "rice")
         "variety": "Dent corn",  # Crop variety (specific strain or type)
-        "start_date": "2023-04-01",  # Start date of the analysis (YYYY-MM-DD)
-        "end_date": "2023-10-01",  # End date of the analysis (YYYY-MM-DD)
+        "startdate": "2023-04-01",  # Start date of the analysis (YYYY-MM-DD)
+        "enddate": "2023-10-01",  # End date of the analysis (YYYY-MM-DD)
         "slicing": False,  # Enable/disable data slicing (Boolean)
         "plotting": True,  # Enable/disable plotting of results (Boolean),
         "strategy": "ALL", # Select output statistics: ("ALL", "phenology", "summary", "timeseries")
@@ -74,16 +74,16 @@ def process_parcel(
     centroid = transformed_geometry.centroid
     lat, lon = centroid.y, centroid.x
 
-    start_date, end_date = parse_dates(row, config['start_date'], config['end_date'])
-    start_date_str = start_date.strftime('%Y-%m-%dT%H:%M:%S')
-    end_date_str = end_date.strftime('%Y-%m-%dT%H:%M:%S')
+    startdate, enddate = parse_dates(row, config['startdate'], config['enddate'])
+    startdate_str = startdate.strftime('%Y-%m-%dT%H:%M:%S')
+    enddate_str = enddate.strftime('%Y-%m-%dT%H:%M:%S')
 
     veg = aggregation(config['dir_ndvi'], aoi, gid)
     ndvi_data = preprocess_df(veg)
     ndvi_data = smoothing(ndvi_data)
 
     if config['slicing']:
-        ndvi_data = ndvi_data[(ndvi_data['date'] >= start_date_str) & (ndvi_data['date'] <= end_date_str)]
+        ndvi_data = ndvi_data[(ndvi_data['date'] >= startdate_str) & (ndvi_data['date'] <= enddate_str)]
 
     if len(ndvi_data) > 0:
         peaks, peak_dates, peak_values, pos_date, pos_value, vos_date, vos_value = get_peaks(ndvi_data)
@@ -96,12 +96,12 @@ def process_parcel(
         lst_data = preprocess_df(lst_data)
 
         if config['slicing']:
-            lst_data = lst_data[(lst_data['date'] >= start_date_str) & (lst_data['date'] <= end_date_str)]
+            lst_data = lst_data[(lst_data['date'] >= startdate_str) & (lst_data['date'] <= enddate_str)]
 
-        meteo_data = get_era5_daily_gee(lat, lon, start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
+        meteo_data = get_era5_daily_gee(lat, lon, startdate.strftime('%Y-%m-%d'), enddate.strftime('%Y-%m-%d'))
 
         gdd_corridors = get_gdd_corridors(
-            lst_data, meteo_data, start_date, end_date,
+            lst_data, meteo_data, startdate, enddate,
             config['country'], config['crop'], config['variety']
         )
 
