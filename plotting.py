@@ -110,12 +110,15 @@ def plot_all(
         startdate, enddate
 ):
 
+    print (gdd_timeseries.columns)
+
     ndvi_interpol = ndvi_timeseries['interpol_NDVI'].values
     ndvi_filter = ndvi_timeseries['filter_NDVI'].values
     ndvi_dates = ndvi_timeseries['date'].values
 
     gdd_dates = gdd_timeseries['date'].values
     gdd_values = gdd_timeseries['GDD'].values
+    gdd_lst_values = gdd_timeseries['GDD_LST'].values
 
     fig, ax1 = plt.subplots()
     ax1.plot(ndvi_dates, ndvi_interpol, label='Raw NDVI', color='blue', linewidth=1.5)
@@ -127,6 +130,7 @@ def plot_all(
 
     ax2 = ax1.twinx()
     ax2.plot(gdd_dates, gdd_values, 'r-', label='GDD')
+    ax2.plot(gdd_dates, gdd_lst_values, 'y-', label='GDD_LST')
 
     """
     for idx, plateau in enumerate(plateaus):
@@ -141,16 +145,16 @@ def plot_all(
     ax1.scatter(sos_date, sos_value, color='green', label='SOS', zorder=5)
     ax1.scatter(eos_date, eos_value, color='orange', label='EOS', zorder=5)
 
-    merge_timeseries = merge_timeseries[merge_timeseries['stage'].notnull() & (merge_timeseries['stage'] != 'NaN')]
-    #unique_stages = sorted(merge_timeseries['stage'].unique())
-    unique_stages = merge_timeseries['stage'].unique()
+    kf = gdd_timeseries[(gdd_timeseries['stage'] != 'NULL')]
+    unique_stages = kf['stage'].unique()
+    print (unique_stages)
     colors = ['blue', 'green', 'yellow', 'orange']
     if len(unique_stages) < len(colors):
         colors = colors[:len(unique_stages)]
     for stage, color in zip(unique_stages, colors):
-        stage_indices = merge_timeseries[merge_timeseries['stage'] == stage]['date']
-        #if len(stage_indices) > 0:
-        ax1.axvspan(stage_indices.min(), stage_indices.max(), color=color, alpha=0.3, label=stage)
+        stage_indices = kf[kf['stage'] == stage]['date']
+        if len(stage_indices) > 0:
+            ax1.axvspan(stage_indices.min(), stage_indices.max(), color=color, alpha=0.3, label=stage)
     handles1, labels1 = ax1.get_legend_handles_labels()
     handles2, labels2 = ax2.get_legend_handles_labels()
     all_handles = handles1 + handles2
