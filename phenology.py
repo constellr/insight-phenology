@@ -49,11 +49,17 @@ def get_peaks(gf):
     pos_date = gf.loc[max_index, 'date']
     pos_value = gf.loc[max_index, 'filter']
 
-    hf = gf.copy()
-    hf = hf[hf['date'] < pos_date]
-    min_index = hf['filter'].idxmin()
-    vos_date = hf.loc[min_index, 'date']
-    vos_value = hf.loc[min_index, 'filter']
+    try:
+        hf = gf.copy()
+        hf = hf[hf['date'] < pos_date]
+        min_index = hf['filter'].idxmin()
+        vos_date = hf.loc[min_index, 'date']
+        vos_value = hf.loc[min_index, 'filter']
+    except:
+        hf = gf.copy()
+        min_index = hf['filter'].idxmin()
+        vos_date = hf.loc[min_index, 'date']
+        vos_value = hf.loc[min_index, 'filter']
 
     return peaks, peak_dates, peak_values, pos_date, pos_value, vos_date, vos_value
 
