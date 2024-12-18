@@ -4,7 +4,7 @@ import numpy as np
 from datetime import datetime
 import ee
 
-def get_era5_daily_cds(lat, lon, start_date, end_date, variable='2m_temperature'):
+def get_era5_daily_cds(lat, lon, startdate, enddate, variable='2m_temperature'):
     """
     Extract daily mean, min, max temperatures from ERA5 for a given lat/lon and time period.
 
@@ -19,16 +19,16 @@ def get_era5_daily_cds(lat, lon, start_date, end_date, variable='2m_temperature'
         daily_data (dict): Dictionary containing 'mean', 'min', and 'max' daily values.
     """
 
-    start_date = pd.to_datetime(start_date)
-    end_date = pd.to_datetime(end_date)
+    startdate = pd.to_datetime(startdate)
+    enddate = pd.to_datetime(enddate)
 
     era5_url = (
         f"https://cds.climate.copernicus.eu/api/v2/resources/reanalysis"
         f"?product=reanalysis"
         f"&variable={variable}"
-        f"&year={start_date.year},{end_date.year}"
-        f"&month={start_date.month},{end_date.month}"
-        f"&day={start_date.day},{end_date.day}"
+        f"&year={startdate.year},{enddate.year}"
+        f"&month={startdate.month},{enddate.month}"
+        f"&day={startdate.day},{enddate.day}"
         f"&time=12:00"
         f"&format=netcdf"
         f"&lon={lon}"
@@ -60,15 +60,15 @@ def get_era5_daily_cds(lat, lon, start_date, end_date, variable='2m_temperature'
 
     return daily_weather
 
-def get_era5_daily_gee(lat: float, lon: float, start_date: str, end_date: str):
+def get_era5_daily_gee(lat: float, lon: float, startdate: str, enddate: str):
     """
     Extract daily mean, min, max temperatures from ERA5 using Google Earth Engine.
 
     Args:
         lat (float): Latitude of the location.
         lon (float): Longitude of the location.
-        start_date (str): Start date in 'YYYY-MM-DD' format.
-        end_date (str): End date in 'YYYY-MM-DD' format.
+        startdate (str): Start date in 'YYYY-MM-DD' format.
+        enddate (str): End date in 'YYYY-MM-DD' format.
 
     Returns:
         dict: Dictionary containing daily 'mean', 'min', and 'max' temperature lists.
@@ -78,7 +78,7 @@ def get_era5_daily_gee(lat: float, lon: float, start_date: str, end_date: str):
     ee.Initialize()
 
     era5 = ee.ImageCollection("ECMWF/ERA5_LAND/DAILY_AGGR") \
-        .filterDate(start_date, end_date) \
+        .filterDate(startdate, enddate) \
         .select(['temperature_2m', 'temperature_2m_min', 'temperature_2m_max'])
 
     point = ee.Geometry.Point([lon, lat])
