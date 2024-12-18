@@ -11,8 +11,8 @@ def get_era5_daily_cds(lat, lon, startdate, enddate, variable='2m_temperature'):
     Args:
         lat (float): Latitude of the location.
         lon (float): Longitude of the location.
-        start_date (str): Start date in 'YYYY-MM-DD' format.
-        end_date (str): End date in 'YYYY-MM-DD' format.
+        startdate (str): Start date in 'YYYY-MM-DD' format.
+        enddate (str): End date in 'YYYY-MM-DD' format.
         variable (str): ERA5 variable to extract (default is '2m_temperature').
 
     Returns:
