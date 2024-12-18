@@ -13,7 +13,7 @@ def get_gdd_db(country, crop, variety):
 
     return gdd_db, Tmax, Tbase, stagenames
 
-def get_gdd(
+def get_lst_stages(
         lst,
         sos_date,
         pos_date,
@@ -28,21 +28,12 @@ def get_gdd(
 
     if len(lst_df) > 0:
 
-        '''
         lst_daily = smoothing(lst_df)
 
         lst_daily['interpol'] = lst_daily['interpol'] - 273.15
         lst_daily['interpol'] = lst_daily['interpol'].clip(upper=Tmax)
         lst_daily['interpol'] = lst_daily['interpol'].clip(lower=Tbase)
         lst_daily['interpol'] = (lst_daily['interpol'] - Tbase).clip(lower=0)
-        '''
-
-        lst_df['mean'] = lst_df['mean'] - 273.15
-        lst_df['mean'] = lst_df['mean'].clip(upper=Tmax)
-        lst_df['mean'] = lst_df['mean'].clip(lower=Tbase)
-        lst_df['mean'] = (lst_df['mean'] - Tbase).clip(lower=0)
-
-        lst_daily = smoothing(lst_df)
 
         first_inflection = inflection_points['date'].head(1).values[0]
         last_inflection = inflection_points['date'].tail(1).values[0]
@@ -68,9 +59,12 @@ def get_gdd(
 
 def get_gdd_corridors(
         lst,
+        meteo_data,
         sos_date,
         eos_date,
-        country, crop, variety
+        country,
+        crop,
+        variety
     ):
 
     gdd_db, Tmax, Tbase, stagenames = get_gdd_db(country, crop, variety)
@@ -80,24 +74,33 @@ def get_gdd_corridors(
 
     if len(lst_df) > 0:
 
-        '''
         lst_daily = smoothing(lst_df)
+        lst_daily['date'] = pd.to_datetime(lst_daily['date'])
+        meteo_data['date'] = pd.to_datetime(meteo_data['date'])
 
-        lst_daily['interpol'] = lst_daily['interpol'] - 273.15
-        lst_daily['interpol'] = lst_daily['interpol'].clip(upper=Tmax)
-        lst_daily['interpol'] = lst_daily['interpol'].clip(lower=Tbase)
-        lst_daily['interpol'] = (lst_daily['interpol'] - Tbase).clip(lower=0)
-        '''
+        lst_merge = pd.merge(lst_daily, meteo_data, on='date')
+        
+        targets = ['VWST_mean', 'interpol']
+        for target in targets:
 
+            lst_merge[target] = lst_merge[target] - 273.15
+            lst_merge[target] = lst_merge[target].clip(upper=Tmax)
+            lst_merge[target] = lst_merge[target].clip(lower=Tbase)
+            lst_merge[target] = (lst_merge[target] - Tbase).clip(lower=0)
+
+        """
         lst_df['mean'] = lst_df['mean'] - 273.15
         lst_df['mean'] = lst_df['mean'].clip(upper=Tmax)
         lst_df['mean'] = lst_df['mean'].clip(lower=Tbase)
         lst_df['mean'] = (lst_df['mean'] - Tbase).clip(lower=0)
 
         lst_daily = smoothing(lst_df)
+        """
 
-        gdd = lst_daily.loc[(lst_daily['date'] >= sos_date) & (lst_daily['date'] <= eos_date)]
-        gdd['GDD'] = gdd['interpol'].cumsum()
+        gdd = lst_merge.loc[(lst_merge['date'] >= sos_date) & (lst_merge['date'] <= eos_date)]
+
+        gdd['GDD'] = gdd['VWST_mean'].cumsum()
+        gdd['GDD_LST'] = gdd['interpol'].cumsum()
 
         if crop == "sugarcane":
             stage_1 = gdd_db[gdd_db['stage'] == 'Germination']
@@ -127,7 +130,7 @@ def get_gdd_corridors(
                 (gdd['GDD'] > stage_4_min) & (gdd['GDD'] <= stage_4_max)
             ],
             choicelist=stagenames,
-            default='NaN'
+            default='NULL'
         )
 
         gdd['mean_LST'] = gdd['mean']
@@ -136,4 +139,6 @@ def get_gdd_corridors(
         gdd = gdd.drop(columns=['mean', 'interpol', 'filter'])
 
         return gdd
+
+
 
