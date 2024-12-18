@@ -6,17 +6,16 @@
 
 This repo provides the parcel-based derivation of vegetation statistics in analysis-ready format (tabular data/CSV).
 
-- get NDVI-based crop growth stages (phenology metrics)
-- get GDD-based crop growth stages (GDD corridors based on temperature optima)
-- get LST and NDVI time series features
-- get canopy metrics
+- NDVI-based crop growth stages (phenology metrics)
+- GDD-based crop growth stages (GDD corridors based on temperature optima)
+- LST and NDVI time series features
+- Canopy metrics
 
 ![image](https://github.com/user-attachments/assets/9b47356c-3431-429b-86ba-1c248509e04c)
 ![image](https://github.com/user-attachments/assets/d808f185-9df5-46aa-a47c-c8a9f9343d6f)
 
 ## prerequisites
 - local NDVI tiffs
-- local parcel-clipped NDVI tiffs
 - LST tiffs
 - UTM geojson
 - parcel (AOI) geojson
@@ -44,7 +43,7 @@ This repo provides the parcel-based derivation of vegetation statistics in analy
 - CSV file using literature values for ecological optima (GDD corridors) for crop varieties and grwowht stages
 
 ## feature engineering
-- prepration of CSV outputs
+- preparation of CSV outputs
 
 ## plotting
 - plotting and visualization functions
