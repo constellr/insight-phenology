@@ -12,7 +12,7 @@ def get_crs(aoi,utm):
     if aoi.crs != utm.crs:
         aoi.to_crs(utm.crs)
 
-    intersection = gpd.overlay(aoi,utm, how='intersection')
+    intersection = gpd.overlay(aoi, utm, how='intersection')
     epsg = intersection['epsg'].unique()[0]
     aoi = aoi.to_crs(epsg)
 
@@ -61,7 +61,7 @@ def aggregation(dir,aoi,gid):
             statistics = zonal_stats(
                 geom,
                 raster,
-                stats="mean",
+                stats="mean min max",
                 all_touched=True,
                 nodata=0,
                 categorical=False,
@@ -69,8 +69,11 @@ def aggregation(dir,aoi,gid):
             )
 
             mean = statistics[0]['mean']
+            min = statistics[0]['min']
+            max = statistics[0]['max']
+
             id = int(feature['id'])
-            rows.append([id, date, mean])
+            rows.append([id, date, mean, min, max])
 
     return rows
 
@@ -85,6 +88,8 @@ def preprocess_df(rows):
             "id",
             "date",
             "mean",
+            "min",
+            "max"
         ]
     )
 
