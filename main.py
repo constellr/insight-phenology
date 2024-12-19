@@ -128,7 +128,8 @@ def process_parcel(
             lst_data,
             ndvi_data,
         )
-
+        
+        ### """
         img, nearest_date = get_parcel_image(config['dir_clip'], pos_date, gid)
         sorted_labels_map = clustering(img)
         merged_image, cropland = postprocess(sorted_labels_map, img)
@@ -136,6 +137,7 @@ def process_parcel(
         ncf_features = pd.DataFrame()
         ncf_features['id'] = [gid]
         ncf_features['cropland'] = [cropland]
+        ### """
 
         if config['plotting']:
             plot_all(
@@ -144,7 +146,7 @@ def process_parcel(
                 start_date, end_date
             )
 
-            plot_canopy_map(img, nearest_date, merged_image, cropland)
+            #plot_canopy_map(img, nearest_date, merged_image, cropland)
 
         # Append results to dataframes
         wf = pd.concat([summary_features, wf])
